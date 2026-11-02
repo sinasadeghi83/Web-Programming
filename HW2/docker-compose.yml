@@ -1,0 +1,23 @@
+# HW2 practical: JWT auth reverse proxy in front of go-httpbin.
+# Public entrypoint :8080 (the exercise's "port 80") -> proxy -> backend:8080
+# (the internal network). The backend is never published to the host.
+services:
+  backend:
+    image: ghcr.io/mccutchen/go-httpbin
+    expose:
+      - "8080"
+    # NOTE: no `ports:` on purpose — reachable only inside this network.
+
+  proxy:
+    image: python:3.14-slim
+    command: ["python", "/proxy/jwt_proxy.py"]
+    volumes:
+      - ./proxy:/proxy:ro
+    ports:
+      - "8080:8080"
+    environment:
+      LISTEN_PORT: "8080"
+      UPSTREAM: "http://backend:8080"
+      JWT_SECRET: "${JWT_SECRET:-changeme-in-prod}"
+    depends_on:
+      - backend
